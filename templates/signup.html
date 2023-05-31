@@ -1,8 +1,19 @@
 <!DOCTYPE html>
 <html>
+{% if success_message %}
+<script>
+    // 팝업을 표시하는 JavaScript 코드
+    window.addEventListener('DOMContentLoaded', (event) => {
+        alert('Registered successfully');
+        window.location.href = '/'; 
+    });
+</script>
+{% endif %}
+
 <head>
     <title>Sign Up - Web Coin Market</title>
 </head>
+
 <body>
     <h1>Sign Up</h1>
     <form method="POST" action="/signup">
@@ -15,4 +26,5 @@
         <input type="submit" value="Sign Up">
     </form>
 </body>
+
 </html>

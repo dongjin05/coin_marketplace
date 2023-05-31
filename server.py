@@ -1,6 +1,12 @@
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, request
+from pymongo import MongoClient
 
 app = Flask(__name__)
+client = MongoClient('mongodb+srv://ehdwlsshin:1234@cluster0.c5tc90g.mongodb.net/')  # MongoDB 연결 설정
+db = client['coin_market']  # 데이터베이스 선택
+users_collection = db['users']  # 사용자 정보 컬렉션 선택
+
+
 
 # 메인 페이지
 @app.route('/')
@@ -13,9 +19,16 @@ def login():
     return render_template('login.html')
 
 # 회원 가입 페이지
-@app.route('/signup')
+@app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    return render_template('signup.html')
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        balance = 0
+        user_data = {'username': username, 'password': password, 'balance': balance}
+        users_collection.insert_one(user_data)
+        return render_template('signup.html', success_message=True)
+    return render_template('signup.html', success_message=False)
 
 # 잔고 페이지
 @app.route('/balance')
