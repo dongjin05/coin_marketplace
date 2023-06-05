@@ -1,6 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, session
 from pymongo import MongoClient
 import secrets
+import time
 
 app = Flask(__name__)
 client = MongoClient('mongodb+srv://ehdwlsshin:1234@cluster0.c5tc90g.mongodb.net/')  # MongoDB 연결 설정
@@ -58,40 +59,49 @@ def balance():
     else:
         return redirect(url_for('login'))
 
+
+# 잔고 추가
 @app.route('/add_money', methods=['POST'])
 def add_money():
-    username = request.form['username']
-    amount = float(request.form['amount'])
+    if 'username' in session:
+        username = session['username']
+        amount = float(request.form['amount'])
+        user_data = users_collection.find_one({'username': username})
 
-    user_data = users_collection.find_one({'username': username})
-    if user_data:
-        current_balance = user_data['balance']
-        updated_balance = current_balance + amount
-
-        users_collection.update_one({'username': username}, {'$set': {'balance': updated_balance}})
-
-        return "Money added successfully."
-    else:
-        return "User not found."
-
-@app.route('/withdraw_money', methods=['POST'])
-def withdraw_money():
-    username = request.form['username']
-    amount = float(request.form['amount'])
-
-    user_data = users_collection.find_one({'username': username})
-    if user_data:
-        current_balance = user_data['balance']
-        if amount <= current_balance:
-            updated_balance = current_balance - amount
+        if user_data:
+            current_balance = user_data['balance']
+            updated_balance = current_balance + amount
 
             users_collection.update_one({'username': username}, {'$set': {'balance': updated_balance}})
-
-            return "Money withdrawn successfully."
+            time.sleep(1)  # Add a delay of 2 seconds before redirecting
+            return redirect(url_for('balance'))
         else:
-            return "Insufficient balance."
+            return "User not found."
     else:
-        return "User not found."
+        return redirect(url_for('login'))
+
+
+# 잔고 인출
+@app.route('/withdraw_money', methods=['POST'])
+def withdraw_money():
+    if 'username' in session:
+        username = session['username']
+        amount = float(request.form['amount'])
+        user_data = users_collection.find_one({'username': username})
+
+        if user_data:
+            current_balance = user_data['balance']
+            if amount <= current_balance:
+                updated_balance = current_balance - amount
+                users_collection.update_one({'username': username}, {'$set': {'balance': updated_balance}})
+                time.sleep(1)  # Add a delay of 2 seconds before redirecting
+                return redirect(url_for('balance'))
+            else:
+                return "Insufficient balance."
+        else:
+            return "User not found."
+    else:
+        return redirect(url_for('login'))
 
 
 # 마켓 페이지
