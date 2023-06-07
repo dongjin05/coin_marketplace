@@ -2,6 +2,7 @@ from flask import Flask, render_template, redirect, url_for, request, session
 from pymongo import MongoClient
 import secrets
 import time
+import json
 
 app = Flask(__name__)
 client = MongoClient('mongodb+srv://ehdwlsshin:1234@cluster0.c5tc90g.mongodb.net/')  # MongoDB 연결 설정
@@ -11,6 +12,8 @@ users_collection = db['users']  # 사용자 정보 컬렉션 선택
 secret_key = secrets.token_hex(16)
 app.secret_key = secret_key
 
+initial_coin_price = 100
+initial_coin_quantity = 100
 
 # 메인 페이지
 @app.route('/')
@@ -32,6 +35,12 @@ def login():
             return "Invalid username or password."
 
     return render_template('login.html')
+
+# 로그아웃
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('main'))
 
 # 회원 가입 페이지
 @app.route('/signup', methods=['GET', 'POST'])
@@ -102,7 +111,74 @@ def withdraw_money():
             return "User not found."
     else:
         return redirect(url_for('login'))
+    
+# 코인 판매
+@app.route('/sell_coins', methods=['POST'])
+def sell_coins():
+    if 'username' in session:
+        username = session['username']
+        number_of_coins = int(request.form['number_of_coins'])
+        selling_price = float(request.form['selling_price'])
+        user_data = users_collection.find_one({'username': username})
 
+        if user_data:
+            current_balance = user_data['balance']
+            available_coins = user_data.get('coins', 0)
+
+            if available_coins >= number_of_coins:
+                coins_value = number_of_coins * selling_price
+                updated_balance = current_balance + coins_value
+                updated_coins = available_coins - number_of_coins
+
+                users_collection.update_one(
+                    {'username': username},
+                    {'$set': {'balance': updated_balance, 'coins': updated_coins}}
+                )
+                # Update the coin price
+                global initial_coin_price
+                initial_coin_price = selling_price
+
+                time.sleep(1)  # Add a delay of 1 second before redirecting
+                return redirect(url_for('balance'))
+            else:
+                return "Insufficient coins."
+        else:
+            return "User not found."
+    else:
+        return redirect(url_for('login'))
+
+
+# 코인 구매
+@app.route('/buy_coins', methods=['POST'])
+def buy_coins():
+    if 'username' in session:
+        username = session['username']
+        number_of_coins = int(request.form['number_of_coins'])
+        user_data = users_collection.find_one({'username': username})
+
+        if user_data:
+            current_balance = user_data['balance']
+            coin_price = initial_coin_price
+            required_amount = number_of_coins * coin_price
+
+            if current_balance >= required_amount:
+                updated_balance = current_balance - required_amount
+                updated_coins = user_data.get('coins', 0) + number_of_coins
+
+                users_collection.update_one(
+                    {'username': username},
+                    {'$set': {'balance': updated_balance, 'coins': updated_coins}}
+                )
+
+                time.sleep(1)  # Add a delay of 1 second before redirecting
+                return redirect(url_for('balance'))
+            else:
+                return "Insufficient balance."
+        else:
+            return "User not found."
+    else:
+        return redirect(url_for('login'))
+    
 
 # 마켓 페이지
 @app.route('/market')
@@ -112,7 +188,7 @@ def market():
 # 트렌드 페이지
 @app.route('/trend')
 def trend():
-    return render_template('trend.html')
+    return render_template('trend.html',available_coins=initial_coin_quantity, coin_price=initial_coin_price)
 
 # 메인 페이지로 이동하는 버튼
 @app.route('/go_main')
@@ -145,4 +221,4 @@ def go_trend():
     return redirect(url_for('trend'))
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

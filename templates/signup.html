@@ -1,21 +1,60 @@
 <!DOCTYPE html>
 <html>
-{% if success_message %}
-<script>
-    // 팝업을 표시하는 JavaScript 코드
-    window.addEventListener('DOMContentLoaded', (event) => {
-        alert('Registered successfully');
-        window.location.href = '/'; 
-    });
-</script>
-{% endif %}
-
 <head>
     <title>Sign Up - Web Coin Market</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            text-align: center;
+        }
+
+        .main-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        form {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        form label {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        form input[type="text"],
+        form input[type="password"] {
+            width: 300px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        form input[type="submit"] {
+            padding: 5px 15px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        form input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+    </style>
 </head>
 
 <body>
     <h1>Sign Up</h1>
+    
     <form method="POST" action="/signup">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required>
@@ -25,6 +64,19 @@
         <br>
         <input type="submit" value="Sign Up">
     </form>
-</body>
 
+    <div class="main-link">
+        <a href="/">Back to Main</a>
+    </div>
+    
+    {% if success_message %}
+    <script>
+        // 팝업을 표시하는 JavaScript 코드
+        window.addEventListener('DOMContentLoaded', (event) => {
+            alert('Registered successfully');
+            window.location.href = '/';
+        });
+    </script>
+    {% endif %}
+</body>
 </html>
