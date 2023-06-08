@@ -5,9 +5,10 @@ import time
 import json
 
 app = Flask(__name__)
-client = MongoClient('mongodb+srv://ehdwlsshin:1234@cluster0.c5tc90g.mongodb.net/')  # MongoDB 연결 설정
+client = MongoClient('mongodb+srv://ykw1230:ruddnjs1324@cluster0.lmdouj7.mongodb.net/')  # MongoDB 연결 설정
 db = client['coin_market']  # 데이터베이스 선택
 users_collection = db['users']  # 사용자 정보 컬렉션 선택
+queue_collection = db['queue']  # 판매 대기열 컬렉션 선택
 
 secret_key = secrets.token_hex(16)
 app.secret_key = secret_key
@@ -130,10 +131,45 @@ def sell_coins():
                 updated_balance = current_balance + coins_value
                 updated_coins = available_coins - number_of_coins
 
-                users_collection.update_one(
-                    {'username': username},
-                    {'$set': {'balance': updated_balance, 'coins': updated_coins}}
-                )
+                # Add the sell order to the queue
+                sell_order = {
+                    'username': username,
+                    'number_of_coins': number_of_coins,
+                    'selling_price': selling_price
+                }
+                queue_collection.insert_one(sell_order)
+
+                # Check for matching buy orders
+                buy_orders = queue_collection.find({'buying_price': {'$gte': selling_price}}).sort('buying_price', 1)
+                for buy_order in buy_orders:
+                    buy_username = buy_order['username']
+                    buy_number_of_coins = buy_order['number_of_coins']
+                    buy_order_id = buy_order['_id']
+
+                    # Update the balances of the relevant users
+                    sell_user_balance = users_collection.find_one({'username': username})['balance']
+                    sell_user_coins = users_collection.find_one({'username': username}).get('coins', 0)
+                    buy_user_balance = users_collection.find_one({'username': buy_username})['balance']
+                    buy_user_coins = users_collection.find_one({'username': buy_username}).get('coins', 0)
+
+                    updated_sell_user_balance = sell_user_balance + (selling_price * buy_number_of_coins)
+                    updated_sell_user_coins = sell_user_coins - buy_number_of_coins
+                    updated_buy_user_balance = buy_user_balance - (selling_price * buy_number_of_coins)
+                    updated_buy_user_coins = buy_user_coins + buy_number_of_coins
+
+                    users_collection.update_one(
+                        {'username': username},
+                        {'$set': {'balance': updated_sell_user_balance, 'coins': updated_sell_user_coins}}
+                    )
+
+                    users_collection.update_one(
+                        {'username': buy_username},
+                        {'$set': {'balance': updated_buy_user_balance, 'coins': updated_buy_user_coins}}
+                    )
+
+                    # Remove the buy order from the queue
+                    queue_collection.delete_one({'_id': buy_order_id})
+
                 # Update the coin price
                 global initial_coin_price
                 initial_coin_price = selling_price
@@ -178,17 +214,18 @@ def buy_coins():
             return "User not found."
     else:
         return redirect(url_for('login'))
-    
+
 
 # 마켓 페이지
 @app.route('/market')
 def market():
-    return render_template('market.html')
+    sell_orders = queue_collection.find().sort('selling_price', 1)
+    return render_template('market.html', sell_orders=sell_orders)
 
 # 트렌드 페이지
 @app.route('/trend')
 def trend():
-    return render_template('trend.html',available_coins=initial_coin_quantity, coin_price=initial_coin_price)
+    return render_template('trend.html', available_coins=initial_coin_quantity, coin_price=initial_coin_price)
 
 # 메인 페이지로 이동하는 버튼
 @app.route('/go_main')
