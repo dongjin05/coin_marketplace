@@ -56,6 +56,20 @@ def signup():
         return render_template('signup.html', success_message=True)
     return render_template('signup.html', success_message=False)
 
+# 거래 기록 페이지
+@app.route('/history')
+def history():
+    if 'username' in session:
+        username = session['username']
+        user_data = users_collection.find_one({'username': username})
+        if user_data:
+            trade_history = user_data.get('trade_history', [])
+            return render_template('history.html', trade_history=trade_history)
+        else:
+            return "User not found."
+    else:
+        return redirect(url_for('login'))
+
 # 잔고 페이지
 @app.route('/balance')
 def balance():
@@ -149,6 +163,15 @@ def sell_coins():
                  initial_coin_price
                 initial_coin_price = selling_price
                 update_coin_price(selling_price)  # 코인 가격 업데이트
+                
+                # Add trade history
+                trade = {
+                    'date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'type': 'Sell',
+                    'coins': number_of_coins,
+                    'price': selling_price
+                }
+                users_collection.update_one({'username': username}, {'$push': {'trade_history': trade}})
 
                 time.sleep(1)  # Add a delay of 1 second before redirecting
                 return redirect(url_for('balance'))
@@ -181,6 +204,16 @@ def buy_coins():
                     {'username': username},
                     {'$set': {'balance': updated_balance, 'coins': updated_coins}}
                 )
+                
+                # Add trade history
+                trade = {
+                    'date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'type': 'Buy',
+                    'coins': number_of_coins,
+                    'price': coin_price
+                }
+                users_collection.update_one({'username': username}, {'$push': {'trade_history': trade}})
+
 
                 time.sleep(1)  # Add a delay of 1 second before redirecting
                 return redirect(url_for('balance'))
@@ -237,5 +270,11 @@ def go_market():
 def go_trend():
     return redirect(url_for('trend'))
 
+# 거래 기록 페이지로 이동하는 버튼
+@app.route('/go_history')
+def go_history():
+    return redirect(url_for('history'))
+
 if __name__ == '__main__':
     app.run(debug=True)
+
