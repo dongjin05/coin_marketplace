@@ -1,8 +1,8 @@
-from flask import Flask, render_template, redirect, url_for, request, session
+from flask import Flask, render_template, flash, redirect, url_for, request, session
 from pymongo import MongoClient
 import secrets
 import time
-import json
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
 client = MongoClient('mongodb+srv://ehdwlsshin:1234@cluster0.c5tc90g.mongodb.net/')
@@ -142,33 +142,22 @@ def sell_coins():
         number_of_coins = int(request.form['number_of_coins'])
         selling_price = float(request.form['selling_price'])
         user_data = users_collection.find_one({'username': username})
-        coin_data = coins_collection.find_one()
 
-        if user_data and coin_data:
-            current_balance = user_data['balance']
-            available_coins = user_data.get('coins', 0)
-            coin_quantity = coin_data.get('quantity', 0)
+        if user_data:
+            coins_available = user_data.get('coins', 0)
+            if coins_available >= number_of_coins:
+                updated_coins = coins_available - number_of_coins
 
-            if available_coins >= number_of_coins and coin_quantity >= number_of_coins:
-                coins_value = number_of_coins * selling_price
-                updated_balance = current_balance + coins_value
-                updated_coins = available_coins - number_of_coins
-                updated_coin_quantity = coin_quantity - number_of_coins
+                # Update user's coin balance
+                users_collection.update_one({'username': username}, {'$set': {'coins': updated_coins}})
 
-                # Add the sell order to the queue
+                # Add the listing to the queue collection
                 sell_order = {
-                    'username': username,
-                    'number_of_coins': number_of_coins,
-                    'selling_price': selling_price
+                    'seller': username,
+                    'quantity': number_of_coins,
+                    'price': selling_price
                 }
                 queue_collection.insert_one(sell_order)
-
-                
-                # Update the coin price
-                coins_collection.update_one({}, {'$set': {'price': selling_price}})
-
-                # Update the coin quantity
-                coins_collection.update_one({}, {'$set': {'quantity': updated_coin_quantity}})
 
                 # Add trade history
                 trade = {
@@ -187,9 +176,9 @@ def sell_coins():
             return "User not found."
     else:
         return redirect(url_for('login'))
+    
 
-
-# 코인 구매
+# 코인 구매(마켓)
 @app.route('/buy_coins', methods=['POST'])
 def buy_coins():
     if 'username' in session:
@@ -210,17 +199,29 @@ def buy_coins():
                     {'username': username},
                     {'$set': {'balance': updated_balance, 'coins': updated_coins}}
                 )
-                
+
                 # Add trade history
                 trade = {
                     'date': time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'type': 'Buy',
+                    'type': 'Buy from market',
                     'coins': number_of_coins,
                     'price': coin_price
                 }
                 users_collection.update_one({'username': username}, {'$push': {'trade_history': trade}})
 
+                # Reduce coin quantity in the market
+                coin_data = coins_collection.find_one()
+                if coin_data:
+                    initial_coin_quantity = coin_data.get('quantity', 0)
+                    if initial_coin_quantity >= number_of_coins:
+                        updated_coin_quantity = initial_coin_quantity - number_of_coins
+                        coins_collection.update_one({}, {'$set': {'quantity': updated_coin_quantity}})
+                    else:
+                        flash("Insufficient coins in the market!", "error")
+                else:
+                    flash("Coin data not found in the market!", "error")
 
+                flash(f"You have successfully bought {number_of_coins} coins from the market!", "success")
                 time.sleep(1)  # Add a delay of 1 second before redirecting
                 return redirect(url_for('market'))
             else:
@@ -230,11 +231,68 @@ def buy_coins():
     else:
         return redirect(url_for('login'))
 
+# 코인 구매(유저)
+@app.route('/buy_order', methods=['POST'])
+def buy_order():
+    order_id = request.form.get('order_id')
+    sell_order = queue_collection.find_one({'_id': ObjectId(order_id)})
+    if sell_order:
+        # Process the purchase based on the sell_order
+        # For example, deduct coins from the buyer and update seller's balance
+        buyer_username = session['username']
+        buyer_data = users_collection.find_one({'username': buyer_username})
+        seller_username = sell_order['seller']
+        seller_data = users_collection.find_one({'username': seller_username})
+
+        if buyer_data and seller_data:
+            coins_to_buy = sell_order['quantity']
+            buying_price = sell_order['price']
+            buyer_coins = buyer_data.get('coins', 0)
+            buyer_balance = buyer_data.get('balance', 0)
+            seller_balance = seller_data.get('balance', 0)
+
+            # Calculate the total cost for the buyer
+            total_cost = coins_to_buy * buying_price
+
+            if buyer_balance >= total_cost:
+                # Deduct coins from the buyer
+                new_buyer_balance = buyer_balance - total_cost
+                users_collection.update_one({'username': buyer_username}, {'$set': {'balance': new_buyer_balance}})
+
+                # Add coins to the seller
+                new_buyer_coins = buyer_coins + coins_to_buy
+                users_collection.update_one({'username': buyer_username}, {'$set': {'coins': new_buyer_coins}})
+
+                new_seller_balance = seller_balance + total_cost
+                users_collection.update_one({'username': seller_username}, {'$set': {'balance': new_seller_balance}})
+
+                # Remove the sell order from the queue
+                queue_collection.delete_one({'_id': ObjectId(order_id)})
+                
+                trade = {
+                    'date': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'type': 'Buy',
+                    'coins': coins_to_buy,
+                    'price': buying_price
+                }
+                users_collection.update_one({'username': buyer_username}, {'$push': {'trade_history': trade}})
+
+                # Redirect the user to the market page after the successful purchase
+                return redirect('/market')
+
+    # If the sell_order doesn't exist or the purchase couldn't be processed, handle the error
+    return "Error: Unable to process the purchase"
 
 # 마켓 페이지
 @app.route('/market')
 def market():
-    sell_orders = queue_collection.find().sort('selling_price', 1)
+    coins = 0  # Set a default value for coins
+    if 'username' in session:
+        username = session['username']
+        user_data = users_collection.find_one({'username': username})
+        if user_data:
+            coins = user_data.get('coins', 0)  # Update the value of coins if user_data exists
+    sell_orders = queue_collection.find().sort('price', 1)
     coin_data = coins_collection.find_one()
     if coin_data:
         initial_coin_quantity = coin_data.get('quantity', 0)
@@ -242,7 +300,7 @@ def market():
     else:
         initial_coin_quantity = 0
         initial_coin_price = 0
-    return render_template('market.html', initial_coin_quantity=initial_coin_quantity, initial_coin_price=initial_coin_price, sell_orders=sell_orders)
+    return render_template('market.html', initial_coin_quantity=initial_coin_quantity, initial_coin_price=initial_coin_price, sell_orders=sell_orders, user_coin_balance=coins)
 
 # 트렌드 페이지
 @app.route('/trend')
@@ -290,4 +348,3 @@ def go_history():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
