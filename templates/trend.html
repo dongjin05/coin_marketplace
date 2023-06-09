@@ -2,55 +2,88 @@
 <html>
 <head>
     <title>Price Trend - Web Coin Market</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    
-</head>
-<div style="max-width: 400px;">
-    <canvas id="priceChart"></canvas>
-  </div>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      // Retrieve the price trend data from the Flask template variable
-      var priceTrendData = JSON.parse('{{ price_trend|safe }}');
-  
-      // Create the line chart using Chart.js
-      var ctx = document.getElementById('priceChart').getContext('2d');
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'],  // Update the labels as needed
-          datasets: [{
-            label: 'Price Trend',
-            data: priceTrendData,
-            borderColor: 'blue',
-            fill: false
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              display: false  // Hide the x-axis labels
-            },
-            y: {
-              beginAtZero: true
-            }
-          },
-          plugins: {
-            legend: {
-              display: false  // Hide the legend
-            }
-          }
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f3f3f3;
+            font-family: Arial, sans-serif;
+            margin: 20px;
         }
-      });
-    });
-  </script>
+        h1 {
+            color: #555;
+            text-align: center;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin-top: 20px;
+            text-align: center;
+        }
+        li {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 20px;
+            background-color: #cddaed;
+            color: #555;
+            border-radius: 20px;
+        }
+        div {
+            max-width: 400px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
 <body>
     <h1>Price Trend</h1>
+    <div>
+        <canvas id="priceChart"></canvas>
+    </div>
     <ul>
         {% for price in price_trend %}
           <li>{{ price }} won</li>
         {% endfor %}
-      </ul>
+    </ul>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+          // Retrieve the price trend data from the Flask template variable
+          var priceTrendData = JSON.parse('{{ price_trend|safe }}');
+      
+          // Create the line chart using Chart.js
+          var ctx = document.getElementById('priceChart').getContext('2d');
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'],  // Update the labels as needed
+              datasets: [{
+                label: 'Price Trend',
+                data: priceTrendData,
+                borderColor: 'blue',
+                fill: false
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: {
+                  display: false  // Hide the x-axis labels
+                },
+                y: {
+                  beginAtZero: true
+                }
+              },
+              plugins: {
+                legend: {
+                  display: false  // Hide the legend
+                }
+              }
+            }
+          });
+        });
+    </script>
 </body>
 </html>

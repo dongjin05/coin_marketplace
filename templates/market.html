@@ -2,29 +2,153 @@
 <html>
 <head>
     <title>Market - Web Coin Market</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #F5F5F5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        h2 {
+            color: #666;
+            margin-top: 30px;
+        }
+
+        form {
+            margin-top: 10px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        input[type="number"] {
+            padding: 5px;
+            border: 1px solid #CCC;
+            border-radius: 4px;
+            width: 200px;
+        }
+
+        input[type="submit"] {
+            padding: 10px 20px;
+            background-color: #55D6BE;
+            color: #FFF;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .market-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 30px;
+            width: 80%;
+            max-width: 800px;
+        }
+
+        .market-section {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .market-section form {
+            margin: 0px 50px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #CCC;
+        }
+
+        th {
+            background-color: #E1E1E1;
+        }
+
+        tr:nth-child(even) {
+            background-color: #F9F9F9;
+        }
+
+        a {
+            color: #55D6BE;
+        }
+    </style>
 </head>
 <body>
-    <h1>Market</h1>
-    <h2>Available Coins: {{ available_coins }}</h2>
-    <h2>Current Coin Price: {{ coin_price }}</h2>
-    <h2>Sell Coins</h2>
-    <form method="POST" action="/sell_coins">
-        <label for="number_of_coins">Number of Coins:</label>
-        <input type="number" id="number_of_coins" name="number_of_coins" required>
+    <div class="market-container">
+        <h1>Market</h1>
+        <div class="market-section">
+            <div>
+                <h2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sell Coins</h2>
+                <form method="POST" action="/sell_coins">
+                    <label for="number_of_coins">Number of Coins:</label>
+                    <input type="number" id="number_of_coins" name="number_of_coins" required>
+                    <br>
+                    <label for="selling_price">Selling Price per Coin:</label>
+                    <input type="number" id="selling_price" name="selling_price" required>
+                    <br>
+                    <input type="submit" value="Sell Coins">
+                </form>
+            </div>
+            <div>
+                <h2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Buy Coins from Market</h2>
+                <form method="POST" action="/buy_coins">
+                    <label for="number_of_coins">Number of Coins:</label>
+                    <input type="number" id="number_of_coins" name="number_of_coins" required>
+                    <br>
+                    <input type="submit" value="Buy Coins">
+                </form>
+            </div>
+        </div>
+        <h2>Your Number of Coins: {{ user_coin_balance }}</h2>
         <br>
-        <label for="selling_price">Selling Price per Coin:</label>
-        <input type="number" id="selling_price" name="selling_price" required>
+        <table>
+            <tr>
+                <th>Seller</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+            <tr>
+                <td>Market</td>
+                <td>{{ initial_coin_quantity }}</td>
+                <td>{{ initial_coin_price }}</td>
+                <td></td>
+            </tr>
+            {% for order in sell_orders %}
+            <tr>
+                <td>{{ order['seller'] }}</td>
+                <td>{{ order['quantity'] }}</td>
+                <td>{{ order['price'] }}</td>
+                <td>
+                    <form method="POST" action="/buy_order">
+                        <input type="hidden" name="order_id" value="{{ order['_id'] }}">
+                        <input type="submit" value="Buy">
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
         <br>
-        <input type="submit" value="Sell Coins">
-        
-    </form>
-    <h2>Buy Coins</h2>
-    <form method="POST" action="/buy_coins">
-        <label for="number_of_coins">Number of Coins:</label>
-        <input type="number" id="number_of_coins" name="number_of_coins" required>
-        <br>
-        <input type="submit" value="Buy Coins">
-    </form>
+        <a href="{{ url_for('main') }}">Back to Main</a>
+    </div>
 </body>
 </html>
-        
