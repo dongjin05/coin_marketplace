@@ -5,7 +5,7 @@ import time
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-client = MongoClient('mongodb+srv://ehdwlsshin:1234@cluster0.c5tc90g.mongodb.net/')
+client = MongoClient('mongodb+srv://ykw1230:ruddnjs1324@cluster0.lmdouj7.mongodb.net/')
 db = client['coin_market']
 users_collection = db['users']
 queue_collection = db['queue']
@@ -167,7 +167,7 @@ def sell_coins():
                     'price': selling_price
                 }
                 users_collection.update_one({'username': username}, {'$push': {'trade_history': trade}})
-
+                update_coin_price(selling_price)
                 time.sleep(1)  # Add a delay of 1 second before redirecting
                 return redirect(url_for('market'))
             else:
@@ -216,6 +216,7 @@ def buy_coins():
                     if initial_coin_quantity >= number_of_coins:
                         updated_coin_quantity = initial_coin_quantity - number_of_coins
                         coins_collection.update_one({}, {'$set': {'quantity': updated_coin_quantity}})
+                        update_coin_price(coin_price)
                     else:
                         flash("Insufficient coins in the market!", "error")
                 else:
