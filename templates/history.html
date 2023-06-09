@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trade History</title>
+</head>
+<body>
+    <h1>Trade History</h1>
+    <table>
+        <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Coins</th>
+            <th>Price</th>
+        </tr>
+        {% for trade in trade_history %}
+        <tr>
+            <td>{{ trade.date }}</td>
+            <td>{{ trade.type }}</td>
+            <td>{{ trade.coins }}</td>
+            <td>{{ trade.price }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <a href="{{ url_for('main') }}">Go back to Main</a>
+</body>
+</html>
